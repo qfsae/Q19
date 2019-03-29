@@ -56,7 +56,7 @@ void loop(){
     myPID.SetControllerDirection(DIRECT);
   }
   else {
-    
+    myPID.SetControllerDirection(IDLE); // set controller to idle until pressure evens out 
     //not really doing much here 
   }
   myPID.Compute();
