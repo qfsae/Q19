@@ -31,7 +31,7 @@ void setup(){
   inputPressure = 0;
   pressureDifference = 0;
   
- setPWMFrequency(6, 8);
+ setPWMFrequency(9, 8);
   
   myPID.SetMode(AUTOMATIC);
   myPID.SetSampleTime(2);
