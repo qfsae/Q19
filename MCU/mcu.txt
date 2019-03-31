@@ -60,7 +60,6 @@ void setup(){
 	Init();
 	attachInterrupt(digitalPinToInterrupt(upShift), upShift, CHANGE);
 	attachInterrupt(digitalPinToInterrupt(downShift), downShift, CHANGE);
-	
 }
 
 void loop(){

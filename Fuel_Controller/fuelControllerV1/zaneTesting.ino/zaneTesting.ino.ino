@@ -1,6 +1,8 @@
+#include <PID_v1.h>
+
 void setup(){
   Serial.begin(9600);
-setPwmFrequency(9,8);
+  setPwmFrequency(9,8);
   //gives us 4000hz approixmatley
 
 }

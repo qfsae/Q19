@@ -1,16 +1,9 @@
 #include <PID_v1.h>
 
-
 const int pressureReading = A0; //Analog input from pressure sensor
 const int pumpPWM = 9; //PWM output from arduino
-
-//PWM output must have frequency >1000Hz as well as >2.5V Amplitude
-
-//for testing
 const int pressureUnderLED = 3;
 
-
-//to use in main loop
 int setPWM = 0;
 int currentPressure = 0;
 double pressureDifference;
@@ -21,8 +14,8 @@ double inputPressure;
 double pressureThreshold = 400;
 
 //PID Tunings
-const double kp = 0;
-const double ki = 0.00;
+const double kp = 1;
+const double ki = 0.00001;
 const double kd = 0.00;
 
 PID myPID(&inputPressure, &outputPWM, &pressureThreshold, kp, ki, kd, DIRECT);
@@ -31,7 +24,7 @@ void setup(){
   inputPressure = 0;
   pressureDifference = 0;
   
- setPWMFrequency(9, 8);
+  setPWMFrequency(9, 8);
   
   myPID.SetMode(AUTOMATIC);
   myPID.SetSampleTime(2);
@@ -51,40 +44,39 @@ void setup(){
 
 void loop(){
   Serial.print(pressureThreshold);
-  Serial.print("\t");
+  Serial.print("\t\t\t");
   
   inputPressure = analogRead(pressureReading);
   Serial.print(inputPressure);
-  Serial.print("\t");
+  Serial.print("\t\t\t");
   
-  pressureDifference = (inputPressure - pressureThreshold); //positive if current is greater, negative if not
+  pressureDifference = (pressureThreshold - inputPressure); //positive if current is greater, negative if not
   Serial.print(pressureDifference);
-  Serial.print("\n");
+  Serial.print("\t\t\t");
 
   if(pressureDifference < 0){
-    Serial.println("Fuel pump requires more pressure, increasing PDM Signal\n");
-    delay(100);
-    //want to increase the pressure, activate the fuel pump
-    digitalWrite(pressureUnderLED, HIGH);
-    setPWM = 240;
-    Serial.println("Fuel pump PWM is now: " + setPWM);
-    delay(100);
-    analogWrite(pumpPWM, setPWM);
-    //myPID.SetControllerDirection(DIRECT);
-  }
-  else {
+      //want to increase the pressure, activate the fuel pump
+      digitalWrite(pressureUnderLED, HIGH);
+      setPWM = map(inputPressure, 0, 1024, 0, 255);
+      //Serial.println("Fuel pump PWM is now: " + setPWM);
+      myPID.Compute();
+      analogWrite(pumpPWM, outputPWM);
+      //myPID.SetControllerDirection(DIRECT);
+    }
+  
+  if(pressureDifference > 0){
     //wants to let pressure coast until equal 
     digitalWrite(pressureUnderLED, LOW);
-    setPWM = 60;
-//    myPID.SetControllerDirection(); // set controller to idle until pressure evens out 
-//    //not really doing much here 
-
+    setPWM = map(inputPressure, 0, 1024, 0, 255);
+    myPID.Compute();
+    analogWrite(pumpPWM, outputPWM);
+  }
+  digitalWrite(pressureUnderLED, LOW);
   Serial.print("\t");
   Serial.print(setPWM);
   Serial.println();
   delay(100);
-  myPID.Compute();
-}
+
 }
 void setPWMFrequency(int pin, int divisor) {
   byte mode;
