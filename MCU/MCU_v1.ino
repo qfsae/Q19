@@ -56,10 +56,29 @@ PWM4. TPS_Speed
 53. SCK
 
 */
+
+#define DownButSig 18
+
 void setup(){
 	Init();
 	attachInterrupt(digitalPinToInterrupt(upShift), upShift, CHANGE);
 	attachInterrupt(digitalPinToInterrupt(downShift), downShift, CHANGE);
+}
+
+void Init(){
+	//Function that will initailize all pin modes and starting values 
+	
+	//Inputs
+	pinMode(DownButSig, INPUT);
+	pinMode(DownButSig, INPUT);
+	pinMode(DownButSig, INPUT);
+	pinMode(DownButSig, INPUT);
+	pinMode(DownButSig, INPUT);
+	pinMode(DownButSig, INPUT);
+	pinMode(DownButSig, INPUT);
+	
+	pinMode(DownButSig, INPUT);
+
 }
 
 void loop(){
