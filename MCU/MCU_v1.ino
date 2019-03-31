@@ -57,7 +57,14 @@ PWM4. TPS_Speed
 
 */
 
+//Inputs
 #define DownButSig 18
+
+
+//Outputs
+#define TPS_ECU 
+#define TPS_Speed 5
+#define CAN_INT 3
 
 void setup(){
 	Init();
@@ -79,17 +86,31 @@ void Init(){
 	
 	pinMode(DownButSig, INPUT);
 
+	
+	//Outputs
+	pinMode(TPS_ECU, OUTPUT);
+	pinMode(ShiftCut, OUTPUT);
+	pinMode(TPS_Direction, OUTPUT);
+	pinMode(TPS_Speed, OUTPUT);
+	
+	//Interrupt
+	attachInterrupt(CAN_INT, CANfunction, __);
 }
 
 void loop(){
-	Check();
+	checkSignals();
 	
 	
 }
 
-void Check(){
+void CANfunction(){
+	
+}
+
+
+void checkSignals(){
 	//Test each individual signal to make sure that it is plausible
 	
 
-
+}
 
