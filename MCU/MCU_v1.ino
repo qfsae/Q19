@@ -1,33 +1,5 @@
 /* Arduino Code for Formula SAE Team MCU (Master Control Unit)
 
-
-
-
-
-
-
------------------Wiring Schematic-------------------
-
-INPUTS:
-
-
-Logic psuedocode 
-
-Shifter Buttons are interupt pins 
--> Copy from Q17 Shifting Code 
-
-ETC Code: PID Controlled System
-PID: Proportional Integral Differential 
-
-Need to tune each component 
-Proportaional control: Error would be 90 when your 0 away, then90 times some value is how much you need to move 
-
-PI Control: Proportional and integral, similar to proportional but with the integral term it helps prevent any overshooting and oscillations, ensure that final error is 0 
-PID: Add a differential gain which calculates the ROC, 
-
-If you control these 3, very nice step response -> Will need to do with throttle body 
-
-
 // PIN DEFINITIONS 
 //Analog
 A0. TPS1_Signal
