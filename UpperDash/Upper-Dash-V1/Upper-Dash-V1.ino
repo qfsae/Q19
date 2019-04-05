@@ -3,6 +3,17 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
+// LED Flashing =======================================================================
+// RPM --------------------------------------------------------------------------------
+long rpmFlashLast = 0;
+byte rpmFlash = 1;
+// Engine Temp ------------------------------------------------------------------------
+long engTempFlashLast = 0;
+byte engTempFlash = 1;
+// GTFO -------------------------------------------------------------------------------
+long gtfoFlashLast = 0;
+byte gtfoFlash = 1;
+
 // Shift Registers ====================================================================
 #define latchPIN    4 // pin 3 on ATMega328P
 #define clockPIN    7 // pin 11 on ATMega328P
@@ -15,7 +26,7 @@
 #define pinQ5      32
 #define pinQ6      64
 #define pinQ7     128
-int SR1 = 0, SR2 = 0, SR3 = 255, SR4 = 0, SR5 = 0, SR6 = 0;
+int SR1 = 0, SR2 = 0, SR3 = 255, SR4 = 255, SR5 = 255, SR6 = 255;
 
 // Shift Lights =======================================================================
 #define sRPM1    6800
@@ -44,6 +55,22 @@ int SR1 = 0, SR2 = 0, SR3 = 255, SR4 = 0, SR5 = 0, SR6 = 0;
 #define sLED12  pinQ5 //SR1
 #define rpmFlashTime 75 // RPM Flash timing (ms)
 
+// Warning Lights =====================================================================
+#define ledLR  pinQ4
+#define ledLG  pinQ3
+#define ledLB  pinQ2
+#define ledRR  pinQ7
+#define ledRG  pinQ6
+#define ledRB  pinQ5
+#define engTempLow        60    //Blue Blink
+#define engTempMedLow     70    //Blue
+#define engTempMedHigh    95    //Yellow
+#define engTempHigh       105   //Red
+#define engTempFlashTime  500   //Time in ms
+#define batVoltMed        13    //Yellow
+#define batVoltLow        12.5  //Red
+int launchArm = 0;
+
 // 7 Segment ==========================================================================
 #define ssC pinQ1 //SR3
 #define ssD pinQ2 //SR3  
@@ -53,12 +80,45 @@ int SR1 = 0, SR2 = 0, SR3 = 255, SR4 = 0, SR5 = 0, SR6 = 0;
 #define ssA pinQ6 //SR3
 #define ssB pinQ7 //SR3
 int ssCount = 1;
-int seg1;
-int seg2;
-int seg3;
-int seg4;
-int seg5;
-int seg6;
+int seg1 = (ssB+ssC); // 1
+int seg2 = (ssA+ssB+ssD+ssE+ssG); // 2
+int seg3 = (ssA+ssB+ssC+ssD+ssG); // 3 
+int seg4 = (ssB+ssC+ssF+ssG); // 4
+int seg5 = (ssA+ssC+ssD+ssF+ssG); // 5
+int seg6 = (ssA+ssC+ssD+ssE+ssF+ssG); // 6
+
+// CAN Value Variables ================================================================
+// RPM --------------------------------------------------------------------------------
+boolean updateRPM = false;
+int rpm = 0;
+int rpmLast = 0;
+// Wheel Speed ------------------------------------------------------------------------
+float avgWheelSpeed = 0;
+// Engine Temp ------------------------------------------------------------------------
+float engTemp = 0;
+float engTempLast = 0;
+int updateEngTemp = 0;
+// Battery Voltage --------------------------------------------------------------------
+float batVolt = 0;
+float batVoltLast = 0;
+int updateBatVolt = 0;
+// Oil Pressure -----------------------------------------------------------------------
+float oilPres = 0;
+float oilPresLast = 0;
+float oilPresLow = 23;
+float oilPresHigh = 90;
+long oilPresFlashLast = 0;
+byte oilPresFlash = 1;
+int updateOilPres = 0;
+// TPS --------------------------------------------------------------------------------
+int tps = 0;
+int tpsLast = 0;
+int updateTPS = 0;
+// Fan --------------------------------------------------------------------------------
+boolean fan = false;
+// PDM --------------------------------------------------------------------------------
+boolean pdmError = false;
+boolean pdmFaulted = false;
 
 // OLED ===============================================================================
 #define OLED_MOSI  9        //Data
@@ -72,58 +132,7 @@ int allowCycle = 0;
 int switchMode = 0;
 // Formula Logo -----------------------------------------------------------------------
 static const unsigned char PROGMEM QFSAELogo[] = {
-  B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000,
-  B00000000, B00000001, B11111111, B11100000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000111, B11111111, B10000000, B00000000,
-  B00000000, B00000000, B11111111, B11111000, B00000000, B00000000, B00000000, B00000011, B00000000, B00000000, B00000000, B00000000, B00011111, B11111111, B00000000, B00000000,
-  B00000000, B00000000, B01100000, B00011100, B00000000, B00000000, B00000000, B00011111, B11100000, B00000000, B00000000, B00000000, B00111000, B00000110, B00000000, B00000000,
-  B00000000, B00000000, B00110000, B00000111, B11111111, B11111111, B11111111, B11111100, B11111111, B11111111, B11111111, B11111111, B11100000, B00001100, B00000000, B00000000,
-  B00000000, B00000000, B00011000, B00000011, B11111111, B11111111, B11111111, B11111000, B00111111, B11111111, B11111111, B11111111, B11000000, B00011000, B00000000, B00000000,
-  B00000000, B00000000, B00001100, B00000000, B00000000, B00000000, B00000000, B01100000, B00011100, B00000000, B00000000, B00000000, B00000000, B00110000, B00000000, B00000000,
-  B00000000, B00000000, B00000110, B00000000, B00000000, B00000000, B00000001, B11000000, B00001110, B00000000, B00000000, B00000000, B00000000, B01100000, B00000000, B00000000,
-  B00000000, B00000000, B00000011, B11111111, B11111111, B10000000, B00000001, B10000000, B00000111, B00000000, B00000011, B11111111, B11111111, B11000000, B00000000, B00000000,
-  B00000000, B00000000, B00000000, B00001111, B11111111, B11111111, B11111111, B10000000, B00000011, B11111111, B11111111, B11111111, B11110000, B00000000, B00000000, B00000000,
-  B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000011, B00000000, B00000011, B10000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000,
-  B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000110, B00000000, B00000001, B10000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000,
-  B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00001110, B00000000, B00000000, B11000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000,
-  B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00011100, B00000000, B00000000, B11100000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000,
-  B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00011100, B00000000, B00000000, B01100000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000,
-  B00011111, B11111111, B11111111, B11000000, B00000000, B00000000, B00111000, B00000000, B00000000, B01110000, B00000000, B00000000, B00000111, B11111111, B11111111, B11100000,
-  B01111111, B11111111, B11111111, B11111111, B00000000, B00000000, B01110000, B00000000, B00000000, B00111000, B00000000, B00000001, B11111111, B11111111, B11111111, B11111000,
-  B11111100, B00000000, B00000011, B11111111, B11000000, B00000000, B11100000, B00000000, B00000000, B00011100, B00000000, B00001111, B11111111, B00000000, B00000000, B11111100,
-  B11110000, B00000000, B00000000, B00000011, B11100000, B00000000, B11000000, B00000111, B11000000, B00001110, B00000000, B00001111, B00000000, B00000000, B00000000, B00111100,
-  B11110000, B00000000, B00000000, B00000000, B11100000, B00000000, B11000000, B00011111, B11110000, B00001110, B00000000, B00011110, B00000000, B00000000, B00000000, B00111100,
-  B11110000, B00000000, B00000000, B00000000, B11100000, B00000001, B11000000, B00111100, B01111000, B00000110, B00000000, B00011100, B00000000, B00000000, B00000000, B00111100,
-  B11110000, B00000000, B00000000, B00000000, B01100000, B00000011, B00000111, B11110000, B00011111, B10000011, B00000000, B00011000, B00000000, B00000000, B00000000, B00111100,
-  B11110000, B00000000, B00000000, B00000000, B01100111, B11111111, B11111111, B11100000, B00001111, B11111111, B11111111, B10011000, B00000000, B00000000, B00000000, B00111100,
-  B11110000, B00000000, B00000000, B00000000, B11111111, B11111111, B00001111, B11000000, B00000111, B11000001, B11111111, B11111100, B00000000, B00000000, B00000000, B00111100,
-  B11110000, B00000000, B00000000, B00000000, B11100000, B00000000, B11111011, B10000000, B00000011, B11111110, B00000000, B00011100, B00000000, B00000000, B00000000, B00111100,
-  B11110000, B00000000, B00000000, B00000000, B11100000, B00001111, B10000111, B00000000, B00000001, B11000111, B11100000, B00011100, B00000000, B00000000, B00000000, B00111100,
-  B11110000, B00000000, B00000000, B00000000, B11100000, B11111000, B00001110, B00000000, B00000000, B11100000, B00111100, B00011100, B00000000, B00000000, B00000000, B00111100,
-  B11110000, B00000000, B00000000, B00000000, B11100111, B10000000, B00011100, B00000000, B00000000, B01110000, B00000111, B10011100, B00000000, B00000000, B00000000, B00111100,
-  B11110000, B00000000, B00000000, B00000000, B11101100, B00000000, B00011100, B00000000, B00000000, B01110000, B00000000, B11011110, B00000000, B00000000, B00000000, B00111100,
-  B11110000, B00000000, B00000000, B00000000, B01100000, B00000000, B00111000, B00000000, B00000000, B00111000, B00000000, B00011000, B00000000, B00000000, B00000000, B00111100,
-  B01110000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00111000,
-  B01110000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00111000,
-  B01110000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00111000,
-  B01110000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00111000,
-  B01110000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00111000,
-  B01110000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00111000,
-  B01110000, B00011111, B11111110, B00111111, B11111110, B01111111, B11110001, B11000000, B00001100, B11000000, B00001011, B00000000, B00000000, B00010000, B00000000, B00111000,
-  B01111000, B00011111, B11111111, B01111111, B11111111, B01111111, B11111101, B11100000, B00011101, B11000000, B00011011, B00000100, B00000000, B00111000, B00000000, B01111000,
-  B01111111, B00001111, B11111111, B01110000, B00000111, B01111111, B11111101, B11110000, B00111101, B11000000, B00011011, B00000110, B00000000, B00011100, B00000111, B11111000,
-  B00111111, B00000000, B00000000, B01100000, B00000011, B00000000, B00011101, B11111000, B01111101, B11000000, B00011011, B00011111, B00000000, B00001110, B00000111, B11110000,
-  B00000000, B00011111, B11111111, B01100000, B00000011, B01111111, B11111001, B11011111, B11101101, B11000000, B00011011, B00001110, B00000000, B00000111, B00000000, B00000000,
-  B00000000, B00011111, B11111111, B01100000, B00000011, B01111111, B11111101, B11001111, B11001101, B11000000, B00011011, B00000100, B00000001, B11111111, B10000000, B00000000,
-  B00000000, B00011000, B00000000, B01110000, B00000111, B01100000, B00001101, B11000111, B10001101, B11000000, B00011011, B00000000, B00000011, B11111111, B11000000, B00000000,
-  B00000000, B00011000, B00000000, B01111111, B11111111, B01100000, B00001101, B11000000, B00001101, B11111111, B11111011, B11111111, B11100111, B00000000, B11100000, B00000000,
-  B00000000, B00011000, B00000000, B00111111, B11111110, B01100000, B00001101, B11000000, B00001100, B11111111, B11111011, B11111111, B11101110, B00000000, B01110000, B00000000,
-  B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000100, B00000000, B00100000, B00000000,
-  B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000,
-  B00000000, B00011111, B11111111, B11111111, B11111111, B11111111, B11111111, B11111111, B11111111, B11111111, B11111111, B11111111, B11111111, B11111111, B11111000, B00000000,
-  B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000,
-  B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000,
-  B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000, B00000000,
-  B00000000, B00000000, B00000000
+  B00000000
 };
 
 void setup() {
@@ -144,14 +153,6 @@ void setup() {
   digitalWrite(latchPIN,HIGH);
   Serial.println("Shift registers initialized!");
 
-  // initialize 7 Segment values
-  seg1 = 255 - (ssB+ssC); // 1
-  seg2 = 255 - (ssA+ssB+ssD+ssE+ssG); // 2
-  seg3 = 255 - (ssA+ssB+ssC+ssD+ssG); // 3 
-  seg4 = 255 - (ssB+ssC+ssF+ssG); // 4
-  seg5 = 255 - (ssA+ssC+ssD+ssF+ssG); // 5
-  seg6 = 255 - (ssA+ssC+ssD+ssE+ssF+ssG); // 6
-
   // Initialize OLED ------------------------------------------------------------------
   display.begin(SSD1306_SWITCHCAPVCC);
   display.setTextColor(WHITE);
@@ -159,28 +160,45 @@ void setup() {
   display.display();
 
   initSequence();
+
+  //debug variable settings REMOVE THIS BEFORE PRODUCTION
+  rpm = 6500;
+  engTemp = 75;
+  fan = true;
+  batVolt = 14;
+  pdmError = false;
+  pdmFaulted = false;
+  oilPres = 50;
+  launchArm = false;
 }
 
-void loop() {    
-//    for(int i = 0; i<256; i++) {
-//      SR4 = i;
-//      SR5 = i;
-//      SR6 = i;
-//    }
+void loop() {   
+  rpm++; //REMOVE THIS BEFORE PRODUCTION
+//1. reset shift registers to base values (all lights off)
+  SR1 = 0;
+  SR2 = 0;
+  SR3 = 255;
+  SR4 = 255;
+  SR5 = 255;
+  SR6 = 255;
+//2. run shift light method to update SR1, SR2
+  shiftLights();
+//3. run status light method to update SR4, SR5, SR6
+  statusLights();
+//4. run 7 segment method to update SR3
+  gear();
+  
+//deal with the OLED later
 
-    //statusLEDS();
-    gear();
-    
-      digitalWrite(latchPIN,LOW);
-        shiftOut(dataPIN,clockPIN,MSBFIRST,SR6);
-        shiftOut(dataPIN,clockPIN,MSBFIRST,SR5);
-        shiftOut(dataPIN,clockPIN,MSBFIRST,SR4);
-        shiftOut(dataPIN,clockPIN,MSBFIRST,SR3);
-        shiftOut(dataPIN,clockPIN,MSBFIRST,SR2);
-        shiftOut(dataPIN,clockPIN,MSBFIRST,SR1);
-      digitalWrite(latchPIN,HIGH);
-
-      delay(500);
+//push new values to shift registers    
+  digitalWrite(latchPIN,LOW);
+    shiftOut(dataPIN,clockPIN,MSBFIRST,SR6);
+    shiftOut(dataPIN,clockPIN,MSBFIRST,SR5);
+    shiftOut(dataPIN,clockPIN,MSBFIRST,SR4);
+    shiftOut(dataPIN,clockPIN,MSBFIRST,SR3);
+    shiftOut(dataPIN,clockPIN,MSBFIRST,SR2);
+    shiftOut(dataPIN,clockPIN,MSBFIRST,SR1);
+  digitalWrite(latchPIN,HIGH);
 }
 
 void initSequence() {
@@ -232,33 +250,163 @@ void initSequence() {
       shiftOut(dataPIN,clockPIN,MSBFIRST,SR1);
     digitalWrite(latchPIN, HIGH);
 
-    delay(50);
+    delay(25);
   }
+}
+
+void shiftLights() {
+  // Should we add blinking when 12 lights are on??
+  if(rpm > sRPM12) {
+    // 12 lights
+    SR2 += sLED1+sLED2+sLED3+sLED4+sLED5+sLED6;
+    SR1 += sLED1+sLED2+sLED3+sLED4+sLED5+sLED6;
+  }
+  else if(rpm > sRPM11) {
+    // 11 lights 
+    SR2 += sLED1+sLED2+sLED3+sLED4+sLED5+sLED6;
+    SR1 += sLED7+sLED8+sLED9+sLED10+sLED11;
+  }
+  else if(rpm > sRPM10) {
+    // 10 lights 
+    SR2 += sLED1+sLED2+sLED3+sLED4+sLED5+sLED6;
+    SR1 += sLED7+sLED8+sLED9+sLED10;
+  }
+  else if(rpm > sRPM9) {
+    // 9 lights 
+    SR2 += sLED1+sLED2+sLED3+sLED4+sLED5+sLED6;
+    SR1 += sLED7+sLED8+sLED9;
+  }
+  else if(rpm > sRPM8) {
+    // 8 lights 
+    SR2 += sLED1+sLED2+sLED3+sLED4+sLED5+sLED6;
+    SR1 += sLED7+sLED8;
+  }
+  else if(rpm > sRPM7) {
+    // 7 lights 
+    SR2 += sLED1+sLED2+sLED3+sLED4+sLED5+sLED6;
+    SR1 += sLED7;
+  }
+  else if(rpm > sRPM6) {
+    // 6 lights 
+    SR2 += sLED1+sLED2+sLED3+sLED4+sLED5+sLED6;
+  }
+  else if(rpm > sRPM5) {
+    // 5 lights 
+    SR2 += sLED1+sLED2+sLED3+sLED4+sLED5;
+  }
+  else if(rpm > sRPM4) {
+    // 4 lights 
+    SR2 += sLED1+sLED2+sLED3+sLED4;
+  }
+  else if(rpm > sRPM3) {
+    // 3 lights 
+    SR2 += sLED1+sLED2+sLED3;
+  }
+  else if(rpm > sRPM2) {
+    // 2 lights 
+    SR2 += sLED1+sLED2;
+  }
+  else if(rpm > sRPM1) {
+    // 1 lights 
+    SR2 += sLED1;
+  }
+}
+
+void statusLights() {
+  // TMP    FAN
+  // BAT    PDM
+  // OIL    ARM
+  // TMP -----------------------------------------------------------------------
+  if(engTemp < engTempLow){
+    if(millis() - engTempFlashTime > engTempFlashLast){
+      engTempFlashLast = millis();
+      engTempFlash = engTempFlash*-1;
+    }
+    if(engTempFlash == 1) {
+      SR6 -= ledLB;
+    }
+  } else if(engTemp < engTempMedLow) {
+    // (blue) getting there..
+    SR6 -= ledLB;
+  } else if(engTemp > engTempHigh) {
+    // (red) too hot!
+    SR6 -= ledLR;
+  } else if(engTemp > engTempMedHigh) {
+    // (yellow) pretty hot..
+    SR6 -= ledLR + ledLG;
+  } else {
+    // (green) good to go!
+    SR6 -= ledLG;
+  }
+  // FAN -----------------------------------------------------------------------
+  if(fan) {
+    // purple if fan is on
+    SR6 -= ledRR + ledRB;
+  }
+  // BAT -----------------------------------------------------------------------
+  if(batVolt < batVoltLow) {
+    //red, if voltage is less than 12.5v
+    SR5 -= ledLR;
+  } else if(batVolt < batVoltMed) {
+    //yellow, if voltage is less than 13v
+    SR5 -= ledLR + ledLG;
+  } else {
+    //otherwise green light
+    SR5 -= ledLG;
+  }
+  // PDM -------------------------------------------------------------------------
+  if (pdmError) {
+    // red light if pdm error
+    SR5 -= ledRR;
+  } else if (pdmFaulted) {
+    // yellow light if pdm fault
+    SR5 -= ledRR +ledRG;
+  } else {
+    // green light if good
+    SR5 -= ledRG;
+  }
+  // OIL -------------------------------------------------------------------------
+  if (oilPres < oilPresLow) {
+    // blinking red light if oil pressure is less than 23
+    if(millis() - engTempFlashTime > oilPresFlashLast){
+      oilPresFlashLast = millis();
+      oilPresFlash = oilPresFlash*-1;
+    }
+    if(oilPresFlash == 1) {
+      SR4 -= ledLR;
+    }
+  } else if (oilPres > oilPresHigh) {
+    // red light if oil pressure is greater than 90
+    SR4 -= ledLR;
+  } else {
+    SR4 -= ledLG;
+  }
+  // ARM -------------------------------------------------------------------------
+  if (launchArm) { 
+    SR4 -= ledRG + ledRR;
+  } 
+}
+
+void gear() {
+  // testing code 
+  ssCount++;
+  if(ssCount == 7) {
+    ssCount = 1;
+  }
+  switch(ssCount) {
+    case 1: SR3 -= seg1; break;
+    case 2: SR3 -= seg2; break;
+    case 3: SR3 -= seg3; break;
+    case 4: SR3 -= seg4; break;
+    case 5: SR3 -= seg5; break;
+    case 6: SR3 -= seg6; break;
+    default: SR3 -= seg1; break;
+  }
+  Serial.println(SR3);
 }
 
 void dispLogo() {
   display.clearDisplay();
   display.drawBitmap(0, 7, QFSAELogo, 128, 50, WHITE);
   display.display();
-}
-
-void gear() {
-  ssCount++;
-  if(ssCount == 7) {
-    ssCount = 1;
-  }
-  switch(ssCount) {
-    case 1: SR3 = seg1; break;
-    case 2: SR3 = seg2; break;
-    case 3: SR3 = seg3; break;
-    case 4: SR3 = seg4; break;
-    case 5: SR3 = seg5; break;
-    case 6: SR3 = seg6; break;
-    default: SR3 = seg1; break;
-  }
-  Serial.println(SR3);
-}
-
-void statusLEDS() {
-  
 }
