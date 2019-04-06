@@ -154,7 +154,7 @@ boolean pdmFaulted = false;
 #define OLED_CLK   8        //Clk
 #define OLED_DC    5//11    //DC/SA0
 #define OLED_CS    6//13    //CS
-#define OLED_RESET 14       //Rst
+#define OLED_RESET A1       //Rst
 Adafruit_SSD1306 display(128, 64, OLED_MOSI, OLED_CLK, OLED_DC, OLED_RESET, OLED_CS);
 int OLEDMode = 1;
 int allowCycle = 0;
@@ -556,6 +556,7 @@ void gear() {
 
 void dispLogo() {
   display.clearDisplay();
+  display.setTextColor(WHITE);  
   display.drawBitmap(0, 7, QFSAELogo, 128, 50, WHITE);
   display.display();
 }
