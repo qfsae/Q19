@@ -1,22 +1,22 @@
-/* Arduino Code for Formula SAE Team MCU (Master Control Unit)
+//Arduino Code for Formula SAE Team MCU (Master Control Unit)
 
+/*
 // PIN DEFINITIONS 
 //Analog
 A0. TPS1_Signal
 A1. TPS2_Signal 
 A2. APPS1_Signal
 A3. APPS2_Signal
-A4. Traction_Signal
+A4. tractionSig_Signal
 
 //PWM
 PWM3. Can Intercept
 PWM4. TPS_Speed
 
-
 //Digital
 18. DownButtonSignal (TX1)
 19. UpButtonSignal	(RX1)
-22. TPS_Direction
+22. TPS_Dir
 23. ShiftCut_Ard
 24. ETC Error Flag
 25. EngNeut_Ard
@@ -27,24 +27,32 @@ PWM4. TPS_Speed
 52. MISO
 53. SCK
 
-*/
+*/ 
 
-//Inputs
-#define DownButSig 18
+//Analog Pins 
+const int TPS1Pin 	= 	A0;  //Pin of TPS1
+const int TPS2Pin 	= 	A1;  //Pin of TPS2
+const int APPS1Pin 	=	A2; // 
+const int APPS2Pin 	= 	A3;
+const int tractionSig = A4;
 
+//PWM
+const int canInt 	=	3;
+const int TPS_Speed = 	4; //PWM pin to motor driver
 
-//Outputs
-#define TPS_ECU 
-#define TPS_Speed 5
-#define CAN_INT 3
+//Digital Pins
+const int downBut 	= 	18; //Button from Paddle Shifts
+const int upBut 	= 	19;
+const int TPS_Dir 	= 	22; //TPS_Direction Signal
+const int shiftCut 	= 	23;
+const int ETC_Flag	=	24;
+const int engNeut 	= 	25;
+const int upSol		=	26; //Signal to upshift solenoid
+const int downSol	= 	27; //Signal to downshift solenoid 
+
 
 //ETC Stuff
-const int TPS1Pin = A0;  //Pin of TPS1
-const int TPS2Pin = A1;  //Pin of TPS2
-const int APPS1Pin = A2; // TEMP potentiometer
-const int torquePin = 9; //PWM pin to motor driver
-const int directionPin = 7; //directionPin
-
+/*
 //PID tunings
 const double Kp = 1;
 const double Ki = 0.00001;
@@ -74,18 +82,20 @@ int APPSdiff;
 
 PID myPID(&Input, &OutputTorque, &DesiredPosition, Kp, Ki, Kd, DIRECT);
 
-
-
+//Function Protocols 
+void CANInterupt();
+int getRPM();
+void checkSignals();
+void blipDown();
+*/
 void setup(){
 	Init();
-	attachInterrupt(digitalPinToInterrupt(upShift), upShift, CHANGE);
-	attachInterrupt(digitalPinToInterrupt(downShift), downShift, CHANGE);
 	Input = 0;
 	DesiredPosition = 0;
 	myPID.SetMode(AUTOMATIC);
 
-	pinMode(directionPin, OUTPUT);
-	pinMode(torquePin, OUTPUT);
+	pinMode(TPS_Dir, OUTPUT);
+	pinMode(TPS_Speed, OUTPUT);
 
 	myPID.SetSampleTime(10);
 }
@@ -93,33 +103,26 @@ void setup(){
 void Init(){
 	//Function that will initailize all pin modes and starting values 
 	
-	//Inputs
-	pinMode(DownButSig, INPUT);
-	pinMode(DownButSig, INPUT);
-	pinMode(DownButSig, INPUT);
-	pinMode(DownButSig, INPUT);
-	pinMode(DownButSig, INPUT);
-	pinMode(DownButSig, INPUT);
-	pinMode(DownButSig, INPUT);
+	//Analog
+	pinMode(TPS1Pin, INPUT);
+	pinMode(TPS2Pin, INPUT);
+	pinMode(APPS1Pin, INPUT);
+	pinMode(APPS2Pin, INPUT);
+	pinMode(tractionSig, INPUT);
 	
-	pinMode(DownButSig, INPUT);
-
+	//PWM Pins
+	attachInterrupt(canInt, CANInterupt, ___); // need to write function for can intercept
 	
-	//Outputs
-	pinMode(TPS_ECU, OUTPUT);
-	pinMode(ShiftCut, OUTPUT);
-	pinMode(TPS_Direction, OUTPUT);
-	pinMode(TPS_Speed, OUTPUT);
-	
-	//Interrupt
-	attachInterrupt(CAN_INT, CANInterupt, __);
+	//Digital
+	pinMode(downBut, INPUT);
+	pinMode(upBut, INPUT);
+	pinMode(TPS_Dir, OUTPUT);
+	pinMode(shiftCut, OUTPUT);
+	pinMode(ETC_Flag, OUTPUT);
+	pinMode(engNeut, OUTPUT);
+	pinMode(upSol, OUTPUT);
+	pinMode(downSol, OUTPUT);
 }
-
-//Function Protocols 
-void CANInterupt();
-int getRPM();
-void checkSignals();
-void blipDown();
 
 void loop(){
 	checkSignals();
@@ -130,7 +133,7 @@ void loop(){
 	TPSdiff = (TPS1Close - TPS1Open) - ((TPS1 - TPS1Open) + (TPS2 - TPS2Close));
 
 	if(TPSdiff > ((TPS1Close - TPS1Open)*0.1)){ // TPS1 and TPS2 differ by more than 10%
-		analogWrite(torquePin, 0);
+		analogWrite(TPS_Speed, 0);
 		Serial.println("ERROR 1");
 	}
 
@@ -142,22 +145,22 @@ void loop(){
   
 	if(Input < APPS1){
 		myPID.SetControllerDirection(DIRECT);
-		digitalWrite(directionPin,LOW);    
+		digitalWrite(TPS_Dir,LOW);    
 	}
 	else	{
 		myPID.SetControllerDirection(REVERSE);
-		digitalWrite(directionPin,HIGH);
+		digitalWrite(TPS_Dir,HIGH);
 	}
 
 
 	DesiredPosition = APPS1;
 	myPID.Compute();
 	//Update Write Function AFTER Compute
-	analogWrite(torquePin, OutputTorque);
+	analogWrite(TPS_Speed, OutputTorque);
 }
 
-void CANInterupt
-	
+void CANInterupt(){
+//	
 }
 
 int getRPM () {
