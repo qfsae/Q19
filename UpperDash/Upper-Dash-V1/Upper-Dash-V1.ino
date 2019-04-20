@@ -248,19 +248,18 @@ void setup() {
 
   initSequence();
 
-  //debug variable settings REMOVE THIS BEFORE PRODUCTION
-  rpm = 6500;
-  engTemp = 75;
-  fan = true;
-  batVolt = 14;
-  pdmError = false;
-  pdmFaulted = false;
-  oilPres = 50;
-  launchArm = false;
+  //debug variable settings COMMENT THIS BEFORE PROD
+//  rpm = 6500;
+//  engTemp = 75;
+//  fan = true;
+//  batVolt = 14;
+//  pdmError = false;
+//  pdmFaulted = false;
+//  oilPres = 50;
+//  launchArm = false;
 }
 
 void loop() {   
-  rpm++; //REMOVE THIS BEFORE PRODUCTION
 // reset shift registers to base values (all lights off)
   SR1 = 0;
   SR2 = 0;
@@ -538,20 +537,19 @@ void statusLights() {
 
 void gear() {
   // testing code 
-  ssCount++;
-  if(ssCount == 7) {
-    ssCount = 1;
-  }
-  switch(ssCount) {
-    case 1: SR3 -= seg1; break;
-    case 2: SR3 -= seg2; break;
-    case 3: SR3 -= seg3; break;
-    case 4: SR3 -= seg4; break;
-    case 5: SR3 -= seg5; break;
-    case 6: SR3 -= seg6; break;
-    default: SR3 -= seg1; break;
-  }
-  Serial.println(SR3);
+//  ssCount++;
+//  if(ssCount == 7) {
+//    ssCount = 1;
+//  }
+//  switch(ssCount) {
+//    case 1: SR3 -= seg1; break;
+//    case 2: SR3 -= seg2; break;
+//    case 3: SR3 -= seg3; break;
+//    case 4: SR3 -= seg4; break;
+//    case 5: SR3 -= seg5; break;
+//    case 6: SR3 -= seg6; break;
+//    default: SR3 -= seg1; break;
+//  }
 }
 
 void dispLogo() {
