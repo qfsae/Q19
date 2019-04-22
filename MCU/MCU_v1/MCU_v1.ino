@@ -1,4 +1,4 @@
-//Arduino Code for Formula SAE Team MCU (Master Control Unit)
+	//Arduino Code for Formula SAE Team MCU (Master Control Unit)
 /*
 // PIN DEFINITIONS 
 //Analog
@@ -27,7 +27,7 @@ PWM4. TPS_Speed
 53. SCK
 
 */ 
-
+#include <PID_v1.h>
 //----------------------------Pin Definitions--------------------------------
 //Analog Pins 
 const int TPS1Pin 	= 	A0;  //Pin of TPS1
@@ -49,11 +49,14 @@ const int ETC_Flag	=	24;
 const int engNeut 	= 	25;
 const int upSol		=	26; //Signal to upshift solenoid
 const int downSol	= 	27; //Signal to downshift solenoid 
+const int tachSig; //???
 //--------------------------------------------------------------------------
 
 //-------------------------------Delays-------------------------------------
 const int downShiftDelay 	= 	400; //from Q17 need to retune 
-const int upShiftDelay 		= 	200;
+const int upShiftDelayTime	= 	200;
+const int numberRPMSamples = 5;
+long engineRpm = 0;
 //--------------------------------------------------------------------------
 
 //----------------------------Thresholds------------------------------------
@@ -130,9 +133,10 @@ void Init(){
 	pinMode(tractionSig, INPUT);
 	
 	//PWM Pins
-	attachInterrupt(canInt, CANInterupt, ___); // need to write function for can intercept
-	attachInterrupt(upBut, manualUpShift, __);
-	attachIntterupt(downBut, manualDownShift, __);
+//	attachInterrupt(canInt, CANInterupt, HIGH); // need to write function for can intercept
+	//attachInterrupt(upBut, manualUpShift, LOW);
+	//attachInterrupt(downBut, manualDownShift, LOW);
+	
 	//Digital
 	pinMode(downBut, INPUT);
 	pinMode(upBut, INPUT);
@@ -148,7 +152,8 @@ void Init(){
 
 void loop(){
 	checkSignals();
-	updateETB();
+	//updateETB();
+	manualShifting();
 }
 
 //ETC Function
@@ -186,7 +191,7 @@ void updateETB(){
 }//updateETB()
 
 //Shifting Stuff
-void manualMode () {
+void manualShifting () {
   //Upshift 
   int time; 
   if (!digitalRead(upBut)) {
@@ -244,7 +249,7 @@ int getRPM () {
     }
     
   highTimeAvg = highTimeTotal / numberRPMSamples;
-  if (highTimeAvg>0 {
+  if (highTimeAvg>0 ){
     engineRpm = 5/highTimeAvg;
   }
   return engineRpm;
