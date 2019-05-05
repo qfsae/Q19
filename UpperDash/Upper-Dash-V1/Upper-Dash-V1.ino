@@ -1,4 +1,5 @@
 #include <mcp_can.h>
+#include <mcp_can_dfs.h>
 // using latest CAN library from https://github.com/Seeed-Studio/CAN_BUS_Shield as of April 5, 2019
 
 #include <SPI.h>
@@ -246,8 +247,9 @@ void setup() {
   display.clearDisplay();
   display.display();
 
-  initSequence();
-
+  canOK();
+  Serial.println("Good to go");
+  
   //debug variable settings COMMENT THIS BEFORE PROD
 //  rpm = 6500;
 //  engTemp = 75;
@@ -259,7 +261,20 @@ void setup() {
 //  launchArm = false;
 }
 
-void loop() {   
+void canOK(){
+    while (CAN_OK != CAN.begin(CAN_250KBPS))              // init can bus : baudrate = 500k
+    {
+        Serial.println("CAN BUS Shield init fail");
+        Serial.println(" Init CAN BUS Shield again");
+        delay(10000);
+    }
+    Serial.println("CAN BUS Shield init ok!");
+    initSequence();
+    return;
+}
+
+void loop() {
+  Serial.println("In loop");   
 // reset shift registers to base values (all lights off)
   SR1 = 0;
   SR2 = 0;
@@ -293,7 +308,6 @@ void initSequence() {
   // fancy startup sequence
   // display logo on OLED
   dispLogo();
-  
   // light each shift light one at a time up and down
   for(int i = 1; i <= 24; i++) {
     switch(i) {
@@ -339,6 +353,7 @@ void initSequence() {
     digitalWrite(latchPIN, HIGH);
 
     delay(25);
+    Serial.println("Done startup Sequence");
   }
 }
 
@@ -553,6 +568,7 @@ void gear() {
 }
 
 void dispLogo() {
+  Serial.println("Displaying logo");
   display.clearDisplay();
   display.setTextColor(WHITE);  
   display.drawBitmap(0, 7, QFSAELogo, 128, 50, WHITE);

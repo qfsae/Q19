@@ -54,7 +54,7 @@ const int tachSig; //???
 
 //-------------------------------Delays-------------------------------------
 const int downShiftDelay 	= 	400; //from Q17 need to retune 
-const int upShiftDelayTime	= 	200;
+const int upShiftDelay		= 	200;
 const int numberRPMSamples = 5;
 long engineRpm = 0;
 //--------------------------------------------------------------------------
@@ -148,11 +148,22 @@ void Init(){
 	pinMode(downSol, OUTPUT);
 	pinMode(TPS_Dir, OUTPUT);
 	pinMode(TPS_Speed, OUTPUT);
+	
+	digitalWrite(upSol, LOW);
+	digitalWrite(downSol, LOW);	
+	
 }
 
 void loop(){
-	checkSignals();
-	//updateETB();
+//  digitalWrite(upSol, HIGH);
+//  digitalWrite(downSol, HIGH);
+//
+//  Serial.print(digitalRead(upBut));
+//  Serial.print("\t");
+//  Serial.print(digitalRead(downBut));
+//  Serial.println();
+//	//checkSignals();
+//	//updateETB();
 	manualShifting();
 }
 
@@ -220,6 +231,7 @@ void manualDownshift () {
       digitalWrite(shiftCut, HIGH);
       digitalWrite(downSol, HIGH);
       delay(downShiftDelay);
+	  
       digitalWrite(shiftCut, LOW); 
       digitalWrite(downSol, LOW);  
 }
@@ -227,9 +239,11 @@ void manualDownshift () {
 void manualUpshift() {
       digitalWrite(shiftCut, HIGH);
       digitalWrite(upSol, HIGH);
-      delay(upShiftDelayTime);
+      delay(upShiftDelay);
+	    
       digitalWrite(upSol, LOW); 
       digitalWrite(shiftCut, LOW); 
+      delay(300);
 }
 
 int getRPM () {
@@ -269,7 +283,7 @@ void neutralFind() {
       
       //digitalWrite(shiftCutPin, HIGH);
       digitalWrite(upSol, HIGH);
-      delay(upShiftDelayTime/2);
+      delay(upShiftDelay/2);
       digitalWrite(upSol, LOW); 
       //digitalWrite(shiftCutPin, LOW);
 }
