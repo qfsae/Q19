@@ -246,7 +246,7 @@ void setup() {
   display.setTextColor(WHITE);
   display.clearDisplay();
   display.display();
-
+ // initSequence();
   canOK();
   Serial.println("Good to go");
   

@@ -47,14 +47,14 @@ const int TPS_Dir 	= 	22; //TPS_Direction Signal
 const int shiftCut 	= 	23;
 const int ETC_Flag	=	24;
 const int engNeut 	= 	25;
-const int upSol		=	26; //Signal to upshift solenoid
-const int downSol	= 	27; //Signal to downshift solenoid 
+const int upSol		=	27; //Signal to upshift solenoid
+const int downSol	= 	26; //Signal to downshift solenoid 
 const int tachSig; //???
 //--------------------------------------------------------------------------
 
 //-------------------------------Delays-------------------------------------
 const int downShiftDelay 	= 	400; //from Q17 need to retune 
-const int upShiftDelay		= 	200;
+const int upShiftDelay		= 	400;
 const int numberRPMSamples = 5;
 long engineRpm = 0;
 //--------------------------------------------------------------------------
@@ -147,8 +147,7 @@ void Init(){
 	pinMode(upSol, OUTPUT);
 	pinMode(downSol, OUTPUT);
 	pinMode(TPS_Dir, OUTPUT);
-	pinMode(TPS_Speed, OUTPUT);
-	
+	pinMode(TPS_Speed, OUTPUT); 
 	digitalWrite(upSol, LOW);
 	digitalWrite(downSol, LOW);	
 	
