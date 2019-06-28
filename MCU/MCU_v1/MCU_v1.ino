@@ -53,8 +53,8 @@ const int tachSig; //???
 //--------------------------------------------------------------------------
 
 //-------------------------------Delays-------------------------------------
-const int downShiftDelay 	= 	400; //from Q17 need to retune 
-const int upShiftDelay		= 	400;
+const int downShiftDelay 	= 	500; //from Q17 need to retune 
+const int upShiftDelay		= 	500;
 const int numberRPMSamples = 5;
 long engineRpm = 0;
 //--------------------------------------------------------------------------
