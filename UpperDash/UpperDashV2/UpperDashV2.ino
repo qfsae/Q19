@@ -18,7 +18,7 @@ byte engTempFlash = 1;
 // GTFO -------------------------------------------------------------------------------
 long gtfoFlashLast = 0;
 byte gtfoFlash = 1;
-
+int currentCycle = 0;
 // Shift Registers ====================================================================
 #define latchPIN    4 // pin 3 on ATMega328P
 #define clockPIN    7 // pin 11 on ATMega328P
@@ -85,16 +85,16 @@ int launchArm = 0;
 #define ssA pinQ6 //SR3
 #define ssB pinQ7 //SR3
 int ssCount = 1;
-int seg1 = (ssB+ssC); // 1
-int seg2 = (ssA+ssB+ssD+ssE+ssG); // 2
-int seg3 = (ssA+ssB+ssC+ssD+ssG); // 3 
-int seg4 = (ssB+ssC+ssF+ssG); // 4
-int seg5 = (ssA+ssC+ssD+ssF+ssG); // 5
-int seg6 = (ssA+ssC+ssD+ssE+ssF+ssG); // 6
+int seg1 = (ssB + ssC); // 1
+int seg2 = (ssA + ssB + ssD + ssE + ssG); // 2
+int seg3 = (ssA + ssB + ssC + ssD + ssG); // 3
+int seg4 = (ssB + ssC + ssF + ssG); // 4
+int seg5 = (ssA + ssC + ssD + ssF + ssG); // 5
+int seg6 = (ssA + ssC + ssD + ssE + ssF + ssG); // 6
 
 // CAN Bus ============================================================================
 const int SPI_CS_PIN = 10;
-MCP_CAN CAN(SPI_CS_PIN); 
+MCP_CAN CAN(SPI_CS_PIN);
 #define PE1  0xF048
 #define PE2  0xF148
 #define PE3  0xF248
@@ -217,28 +217,28 @@ int switchMode = 0;
 // };
 
 // Inputs =============================================================================
-#define cycButPIN     A0
+#define cyclePin     A0
 #define pitComPIN     A1
 #define launchArmPIN  A2
 int pitCom = 0;
-
 
 void setup() {
   Serial.begin(115200);
   Serial.println("Upper Dash V2");
   Serial.println("Initializing Shift Registers..");
   // Initialize Shift Registers -------------------------------------------------------
-  pinMode(latchPIN,OUTPUT);
-  pinMode(clockPIN,OUTPUT);
-  pinMode(dataPIN,OUTPUT);
-  digitalWrite(latchPIN,LOW);
-    shiftOut(dataPIN,clockPIN,MSBFIRST,SR6);
-    shiftOut(dataPIN,clockPIN,MSBFIRST,SR5);
-    shiftOut(dataPIN,clockPIN,MSBFIRST,SR4);
-    shiftOut(dataPIN,clockPIN,MSBFIRST,SR3);
-    shiftOut(dataPIN,clockPIN,MSBFIRST,SR2);
-    shiftOut(dataPIN,clockPIN,MSBFIRST,SR1);
-  digitalWrite(latchPIN,HIGH);
+  pinMode(latchPIN, OUTPUT);
+  pinMode(clockPIN, OUTPUT);
+  pinMode(dataPIN, OUTPUT);
+  pinMode(cyclePin, INPUT);
+  digitalWrite(latchPIN, LOW);
+  shiftOut(dataPIN, clockPIN, MSBFIRST, SR6);
+  shiftOut(dataPIN, clockPIN, MSBFIRST, SR5);
+  shiftOut(dataPIN, clockPIN, MSBFIRST, SR4);
+  shiftOut(dataPIN, clockPIN, MSBFIRST, SR3);
+  shiftOut(dataPIN, clockPIN, MSBFIRST, SR2);
+  shiftOut(dataPIN, clockPIN, MSBFIRST, SR1);
+  digitalWrite(latchPIN, HIGH);
   Serial.println("Shift registers initialized!");
 
   // Initialize OLED ------------------------------------------------------------------
@@ -246,71 +246,102 @@ void setup() {
   display.setTextColor(WHITE);
   display.clearDisplay();
   display.display();
- // initSequence();
+  // initSequence();
   canOK();
   Serial.println("Good to go");
-  
+
   //debug variable settings COMMENT THIS BEFORE PROD
-//  rpm = 6500;
-//  engTemp = 75;
-//  fan = true;
-//  batVolt = 14;
-//  pdmError = false;
-//  pdmFaulted = false;
-//  oilPres = 50;
-//  launchArm = false;
+  //  rpm = 6500;
+  //  engTemp = 75;
+  //  fan = true;
+  //  batVolt = 14;
+  //  pdmError = false;
+  //  pdmFaulted = false;
+  //  oilPres = 50;
+  //  launchArm = false;
 }
 
-void canOK(){
-    while (CAN_OK != CAN.begin(CAN_250KBPS))              // init can bus : baudrate = 500k
-    {
-        Serial.println("CAN BUS Shield init fail");
-        Serial.println(" Init CAN BUS Shield again");
-        delay(10000);
-    }
-    Serial.println("CAN BUS Shield init ok!");
-    initSequence();
-    return;
+void canOK() {
+  while (CAN_OK != CAN.begin(CAN_250KBPS))              // init can bus : baudrate = 500k
+  {
+    Serial.println("CAN BUS Shield init fail");
+    Serial.println(" Init CAN BUS Shield again");
+    delay(10000);
+  }
+  Serial.println("CAN BUS Shield init ok!");
+  initSequence();
+  return;
 }
 
 void loop() {
-  Serial.println("In loop");   
-// reset shift registers to base values (all lights off)
+  // reset shift registers to base values (all lights off)
   SR1 = 0;
   SR2 = 0;
   SR3 = 255;
   SR4 = 255;
   SR5 = 255;
   SR6 = 255;
-// read data from CAN
+  // read data from CAN
   readCAN();
-// run shift light method to update SR1, SR2
+  // run shift light method to update SR1, SR2
   shiftLights();
-// run status light method to update SR4, SR5, SR6
+  // run status light method to update SR4, SR5, SR6
   statusLights();
-// run 7 segment method to update SR3
-  gear();
-  
-//deal with the OLED later
+  // run 7 segment method to update SR3
+  dispBatVolt();
 
-//push new values to shift registers    
-  digitalWrite(latchPIN,LOW);
-    shiftOut(dataPIN,clockPIN,MSBFIRST,SR6);
-    shiftOut(dataPIN,clockPIN,MSBFIRST,SR5);
-    shiftOut(dataPIN,clockPIN,MSBFIRST,SR4);
-    shiftOut(dataPIN,clockPIN,MSBFIRST,SR3);
-    shiftOut(dataPIN,clockPIN,MSBFIRST,SR2);
-    shiftOut(dataPIN,clockPIN,MSBFIRST,SR1);
-  digitalWrite(latchPIN,HIGH);
+  dashCycle();
+  //deal with the OLED later
+  //push new values to shift registers
+  digitalWrite(latchPIN, LOW);
+  shiftOut(dataPIN, clockPIN, MSBFIRST, SR6);
+  shiftOut(dataPIN, clockPIN, MSBFIRST, SR5);
+  shiftOut(dataPIN, clockPIN, MSBFIRST, SR4);
+  shiftOut(dataPIN, clockPIN, MSBFIRST, SR3);
+  shiftOut(dataPIN, clockPIN, MSBFIRST, SR2);
+  shiftOut(dataPIN, clockPIN, MSBFIRST, SR1);
+  digitalWrite(latchPIN, HIGH);
 }
 
+void dashCycle() {
+  if (digitalRead(cyclePin) == 0) {
+    currentCycle%=6;
+    currentCycle++;
+    delay(500);
+  }
+  switch (currentCycle) {
+    case 1:
+      SR3 -= seg1;
+      dispBatVolt();
+      break;
+    case 2:
+      SR3 -= seg2;
+      dispBatVolt();
+      break;
+
+    case 3: SR3 -= seg3; break;
+    case 4: SR3 -= seg4; break;
+    case 5: SR3 -= seg5; break;
+    case 6: SR3 -= seg6; break;
+    default: SR3 -= seg1; break;
+
+  }
+}
+
+void displayTPS() {
+  //Need to implement
+}
+
+void displayBatt() {
+  //asdf
+}
 void initSequence() {
   // fancy startup sequence
   // display logo on OLED
   dispLogo();
   // light each shift light one at a time up and down
-  for(int i = 1; i <= 24; i++) {
-    switch(i) {
+  for (int i = 1; i <= 24; i++) {
+    switch (i) {
       case 1: SR2 += sLED1; break;
       case 2: SR2 += sLED2; break;
       case 3: SR2 += sLED3; break;
@@ -336,20 +367,20 @@ void initSequence() {
       case 23: SR2 -= sLED2; break;
       case 24: SR2 -= sLED1; break;
     }
-      //randomize colors on the Status LEDS
-      int colours[] = {111, 183, 219}; // red green blue 
-      randomSeed(analogRead(0));
-      SR4 = colours[random(0,3)];
-      SR5 = colours[random(0,3)];
-      SR6 = colours[random(0,3)];
-      
-     digitalWrite(latchPIN, LOW);
-      shiftOut(dataPIN,clockPIN,MSBFIRST,SR6);
-      shiftOut(dataPIN,clockPIN,MSBFIRST,SR5);
-      shiftOut(dataPIN,clockPIN,MSBFIRST,SR4);
-      shiftOut(dataPIN,clockPIN,MSBFIRST,SR3);
-      shiftOut(dataPIN,clockPIN,MSBFIRST,SR2);
-      shiftOut(dataPIN,clockPIN,MSBFIRST,SR1);
+    //randomize colors on the Status LEDS
+    int colours[] = {111, 183, 219}; // red green blue
+    randomSeed(analogRead(0));
+    SR4 = colours[random(0, 3)];
+    SR5 = colours[random(0, 3)];
+    SR6 = colours[random(0, 3)];
+
+    digitalWrite(latchPIN, LOW);
+    shiftOut(dataPIN, clockPIN, MSBFIRST, SR6);
+    shiftOut(dataPIN, clockPIN, MSBFIRST, SR5);
+    shiftOut(dataPIN, clockPIN, MSBFIRST, SR4);
+    shiftOut(dataPIN, clockPIN, MSBFIRST, SR3);
+    shiftOut(dataPIN, clockPIN, MSBFIRST, SR2);
+    shiftOut(dataPIN, clockPIN, MSBFIRST, SR1);
     digitalWrite(latchPIN, HIGH);
 
     delay(25);
@@ -359,17 +390,17 @@ void initSequence() {
 
 //CAN code from Q17, untested on Q19
 void readCAN() {
-  if(CAN_MSGAVAIL == CAN.checkReceive()) {           // check if data coming
+  if (CAN_MSGAVAIL == CAN.checkReceive()) {          // check if data coming
     CAN.readMsgBuf(&len, buf);    // read data,  len: data length, buf: data buf
     canID = CAN.getCanId();
-    if (canID == PE1){ // PE1 ====================================================
+    if (canID == PE1) { // PE1 ====================================================
       // RPM ---------------------------------------------------------------------
-      rpm = buf[1]*256 + buf[0];
+      rpm = buf[1] * 256 + buf[0];
       if (rpm != rpmLast)
         updateRPM = true;
       rpmLast = rpm;
       // TPS ---------------------------------------------------------------------
-      tps = buf[3]*256 + buf[2];
+      tps = buf[3] * 256 + buf[2];
       if (tps > 32767)
         tps -= 65536;
       tps *= 0.1;
@@ -378,16 +409,16 @@ void readCAN() {
       tpsLast = tps;
     } else if (canID == PE3) { // PE3 ============================================
       // Oil Pressure ------------------------------------------------------------
-      oilPres = buf[7]*256 + buf[6];
+      oilPres = buf[7] * 256 + buf[6];
       if (oilPres > 32767)
         oilPres -= 65536;
       oilPres *= 0.001;
       if (oilPres != oilPresLast)
-        updateOilPres= 1;
+        updateOilPres = 1;
       oilPresLast = oilPres;
     } else if (canID == PE6) { // PE6 ===========================================
       // Engine Temp -------------------------------------------------------------
-      engTemp = buf[5]*256 + buf[4];
+      engTemp = buf[5] * 256 + buf[4];
       if (engTemp > 32767)
         engTemp -= 65536;
       engTemp *= 0.1;
@@ -396,7 +427,7 @@ void readCAN() {
       engTempLast = engTemp;
     } else if (canID == PE5) { // PE5 ==========================================
       // Average Wheel Speed -----------------------------------------------------
-      avgWheelSpeed = buf[7]*256 + buf[6];
+      avgWheelSpeed = buf[7] * 256 + buf[6];
       if (avgWheelSpeed > 32767)
         avgWheelSpeed -= 65536;
       avgWheelSpeed *= 0.2;
@@ -404,12 +435,12 @@ void readCAN() {
       // Fan ---------------------------------------------------------------------
       fan = buf[0];
       // Battery Voltage ---------------------------------------------------------
-      batVolt = buf[2]*0.1216;
+      batVolt = buf[2] * 0.1216;
       if (batVolt != batVoltLast)
         updateBatVolt = 1;
       batVoltLast = batVolt;
       // PDM Global Error --------------------------------------------------------
-      if (buf[1] == 1){
+      if (buf[1] == 1) {
         pdmFaulted = true;
       }
       pdmError = buf[1];
@@ -419,58 +450,58 @@ void readCAN() {
 
 void shiftLights() {
   // Should we add blinking when 12 lights are on??
-  if(rpm > sRPM12) {
+  if (rpm > sRPM12) {
     // 12 lights
-    SR2 += sLED1+sLED2+sLED3+sLED4+sLED5+sLED6;
-    SR1 += sLED1+sLED2+sLED3+sLED4+sLED5+sLED6;
+    SR2 += sLED1 + sLED2 + sLED3 + sLED4 + sLED5 + sLED6;
+    SR1 += sLED1 + sLED2 + sLED3 + sLED4 + sLED5 + sLED6;
   }
-  else if(rpm > sRPM11) {
-    // 11 lights 
-    SR2 += sLED1+sLED2+sLED3+sLED4+sLED5+sLED6;
-    SR1 += sLED7+sLED8+sLED9+sLED10+sLED11;
+  else if (rpm > sRPM11) {
+    // 11 lights
+    SR2 += sLED1 + sLED2 + sLED3 + sLED4 + sLED5 + sLED6;
+    SR1 += sLED7 + sLED8 + sLED9 + sLED10 + sLED11;
   }
-  else if(rpm > sRPM10) {
-    // 10 lights 
-    SR2 += sLED1+sLED2+sLED3+sLED4+sLED5+sLED6;
-    SR1 += sLED7+sLED8+sLED9+sLED10;
+  else if (rpm > sRPM10) {
+    // 10 lights
+    SR2 += sLED1 + sLED2 + sLED3 + sLED4 + sLED5 + sLED6;
+    SR1 += sLED7 + sLED8 + sLED9 + sLED10;
   }
-  else if(rpm > sRPM9) {
-    // 9 lights 
-    SR2 += sLED1+sLED2+sLED3+sLED4+sLED5+sLED6;
-    SR1 += sLED7+sLED8+sLED9;
+  else if (rpm > sRPM9) {
+    // 9 lights
+    SR2 += sLED1 + sLED2 + sLED3 + sLED4 + sLED5 + sLED6;
+    SR1 += sLED7 + sLED8 + sLED9;
   }
-  else if(rpm > sRPM8) {
-    // 8 lights 
-    SR2 += sLED1+sLED2+sLED3+sLED4+sLED5+sLED6;
-    SR1 += sLED7+sLED8;
+  else if (rpm > sRPM8) {
+    // 8 lights
+    SR2 += sLED1 + sLED2 + sLED3 + sLED4 + sLED5 + sLED6;
+    SR1 += sLED7 + sLED8;
   }
-  else if(rpm > sRPM7) {
-    // 7 lights 
-    SR2 += sLED1+sLED2+sLED3+sLED4+sLED5+sLED6;
+  else if (rpm > sRPM7) {
+    // 7 lights
+    SR2 += sLED1 + sLED2 + sLED3 + sLED4 + sLED5 + sLED6;
     SR1 += sLED7;
   }
-  else if(rpm > sRPM6) {
-    // 6 lights 
-    SR2 += sLED1+sLED2+sLED3+sLED4+sLED5+sLED6;
+  else if (rpm > sRPM6) {
+    // 6 lights
+    SR2 += sLED1 + sLED2 + sLED3 + sLED4 + sLED5 + sLED6;
   }
-  else if(rpm > sRPM5) {
-    // 5 lights 
-    SR2 += sLED1+sLED2+sLED3+sLED4+sLED5;
+  else if (rpm > sRPM5) {
+    // 5 lights
+    SR2 += sLED1 + sLED2 + sLED3 + sLED4 + sLED5;
   }
-  else if(rpm > sRPM4) {
-    // 4 lights 
-    SR2 += sLED1+sLED2+sLED3+sLED4;
+  else if (rpm > sRPM4) {
+    // 4 lights
+    SR2 += sLED1 + sLED2 + sLED3 + sLED4;
   }
-  else if(rpm > sRPM3) {
-    // 3 lights 
-    SR2 += sLED1+sLED2+sLED3;
+  else if (rpm > sRPM3) {
+    // 3 lights
+    SR2 += sLED1 + sLED2 + sLED3;
   }
-  else if(rpm > sRPM2) {
-    // 2 lights 
-    SR2 += sLED1+sLED2;
+  else if (rpm > sRPM2) {
+    // 2 lights
+    SR2 += sLED1 + sLED2;
   }
-  else if(rpm > sRPM1) {
-    // 1 lights 
+  else if (rpm > sRPM1) {
+    // 1 lights
     SR2 += sLED1;
   }
 }
@@ -480,21 +511,21 @@ void statusLights() {
   // BAT    PDM
   // OIL    ARM
   // TMP -----------------------------------------------------------------------
-  if(engTemp < engTempLow){
-    if(millis() - engTempFlashTime > engTempFlashLast){
+  if (engTemp < engTempLow) {
+    if (millis() - engTempFlashTime > engTempFlashLast) {
       engTempFlashLast = millis();
-      engTempFlash = engTempFlash*-1;
+      engTempFlash = engTempFlash * -1;
     }
-    if(engTempFlash == 1) {
+    if (engTempFlash == 1) {
       SR6 -= ledLB;
     }
-  } else if(engTemp < engTempMedLow) {
+  } else if (engTemp < engTempMedLow) {
     // (blue) getting there..
     SR6 -= ledLB;
-  } else if(engTemp > engTempHigh) {
+  } else if (engTemp > engTempHigh) {
     // (red) too hot!
     SR6 -= ledLR;
-  } else if(engTemp > engTempMedHigh) {
+  } else if (engTemp > engTempMedHigh) {
     // (yellow) pretty hot..
     SR6 -= ledLR + ledLG;
   } else {
@@ -502,15 +533,15 @@ void statusLights() {
     SR6 -= ledLG;
   }
   // FAN -----------------------------------------------------------------------
-  if(fan) {
+  if (fan) {
     // purple if fan is on
     SR6 -= ledRR + ledRB;
   }
   // BAT -----------------------------------------------------------------------
-  if(batVolt < batVoltLow) {
+  if (batVolt < batVoltLow) {
     //red, if voltage is less than 12.5v
     SR5 -= ledLR;
-  } else if(batVolt < batVoltMed) {
+  } else if (batVolt < batVoltMed) {
     //yellow, if voltage is less than 13v
     SR5 -= ledLR + ledLG;
   } else {
@@ -523,7 +554,7 @@ void statusLights() {
     SR5 -= ledRR;
   } else if (pdmFaulted) {
     // yellow light if pdm fault
-    SR5 -= ledRR +ledRG;
+    SR5 -= ledRR + ledRG;
   } else {
     // green light if good
     SR5 -= ledRG;
@@ -531,11 +562,11 @@ void statusLights() {
   // OIL -------------------------------------------------------------------------
   if (oilPres < oilPresLow) {
     // blinking red light if oil pressure is less than 23
-    if(millis() - engTempFlashTime > oilPresFlashLast){
+    if (millis() - engTempFlashTime > oilPresFlashLast) {
       oilPresFlashLast = millis();
-      oilPresFlash = oilPresFlash*-1;
+      oilPresFlash = oilPresFlash * -1;
     }
-    if(oilPresFlash == 1) {
+    if (oilPresFlash == 1) {
       SR4 -= ledLR;
     }
   } else if (oilPres > oilPresHigh) {
@@ -545,32 +576,26 @@ void statusLights() {
     SR4 -= ledLG;
   }
   // ARM -------------------------------------------------------------------------
-  if (launchArm) { 
+  if (launchArm) {
     SR4 -= ledRG + ledRR;
-  } 
+  }
 }
 
-void gear() {
-  // testing code 
-//  ssCount++;
-//  if(ssCount == 7) {
-//    ssCount = 1;
-//  }
-//  switch(ssCount) {
-//    case 1: SR3 -= seg1; break;
-//    case 2: SR3 -= seg2; break;
-//    case 3: SR3 -= seg3; break;
-//    case 4: SR3 -= seg4; break;
-//    case 5: SR3 -= seg5; break;
-//    case 6: SR3 -= seg6; break;
-//    default: SR3 -= seg1; break;
-//  }
+void dispBatVolt(void){
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setCursor(0,0);
+  display.println("Bat Volt");
+  display.setTextSize(5);
+  display.setCursor(0,25);
+  display.println(batVolt,1);
+  display.display();
 }
 
 void dispLogo() {
-  Serial.println("Displaying logo");
-  display.clearDisplay();
-  display.setTextColor(WHITE);  
-  display.drawBitmap(0, 7, QFSAELogo, 128, 50, WHITE);
-  display.display();
+  //Serial.println("Displaying logo");
+  //display.clearDisplay();
+  //display.setTextColor(WHITE);
+  //display.drawBitmap(0, 7, QFSAELogo, 128, 50, WHITE);
+  //display.display();
 }
